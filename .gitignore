@@ -1,2 +1,7 @@
 /.venv/
 .env
+__pycache__/
+*.py[cod]
+
+# Added by ggshield
+.cache_ggshield

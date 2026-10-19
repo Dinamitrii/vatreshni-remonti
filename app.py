@@ -2,14 +2,36 @@ import os
 import sqlite3
 from functools import wraps
 from pathlib import Path
+import secrets
 from urllib.parse import quote
 
 from flask import Flask, abort, flash, redirect, render_template_string, request, session, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
+
+
+def load_env_file(path):
+    """Load simple KEY=VALUE entries without overriding the shell environment."""
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_env_file(BASE_DIR / ".env")
+if not os.environ.get("SECRET_KEY"):
+    os.environ["SECRET_KEY"] = secrets.token_urlsafe(48)
 DB_PATH = Path(os.environ.get("REPAIR_DB", BASE_DIR / "repairs.sqlite3"))
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-before-deploying")
+app.secret_key = os.environ["SECRET_KEY"]
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 
 
@@ -221,4 +243,4 @@ def delete_service(service_id):
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5000")), debug=False)
+    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "5000")), debug=False)
