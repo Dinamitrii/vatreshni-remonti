@@ -131,10 +131,26 @@ def index():
     return render_template("index.html", categories=data, settings=settings, wa=whatsapp(settings), map_embed=map_embed, directions=directions, canonical_url=f"{public_site_url()}/")
 
 
+@app.get("/kontakti")
+def contact_page():
+    with db() as conn:
+        settings = settings_dict(conn)
+    map_embed, directions = map_links(settings)
+    return render_template(
+        "contact.html",
+        settings=settings,
+        wa=whatsapp(settings),
+        map_embed=map_embed,
+        directions=directions,
+        canonical_url=f"{public_site_url()}{url_for('contact_page')}",
+    )
+
+
 @app.get("/sitemap.xml")
 def sitemap():
     base_url = public_site_url()
     homepage = escape(f"{base_url}/")
+    contacts_page_url = escape(f"{base_url}{url_for('contact_page')}")
     with db() as conn:
         images = conn.execute("""
             SELECT ci.filename, ci.alt, c.name AS category_name
@@ -149,7 +165,8 @@ def sitemap():
     )
     xml = f'''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-  <url><loc>{homepage}</loc>{image_entries}</url>
+<url><loc>{homepage}</loc>{image_entries}</url>
+  <url><loc>{contacts_page_url}</loc></url>
 </urlset>'''
     return Response(xml, mimetype="application/xml")
 

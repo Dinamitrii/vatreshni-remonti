@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Контакти · {{ settings.company_name }}</title>
+  <meta name="description" content="Телефон, адрес и връзка с {{ settings.company_name }} в {{ settings.city }}.">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand brand-logo" href="{{ url_for('index') }}" aria-label="Vionex — начало">
+      <img src="{{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }}" width="96" height="96" alt="Vionex" fetchpriority="high">
+    </a>
+    <div class="header-tools">
+      <nav class="nav">
+        <a href="{{ url_for('index') }}#uslugi">Услуги и цени</a>
+        <a href="{{ url_for('contact_page') }}" aria-current="page">Контакти</a>
+      </nav>
+      <form id="site-search-form" class="site-search" role="search" method="get" action="{{ url_for('index') }}#uslugi">
+        <label class="sr-only" for="site-search">Търсене в услугите и категориите</label>
+        <input id="site-search" type="search" name="q" placeholder="Търси услуга…" autocomplete="off">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+      </form>
+      <a class="contact" href="{{ wa }}" target="_blank" rel="noopener">Пиши ни в WhatsApp ↗</a>
+    </div>
+  </header>
+  <main>
+<section class="section" id="contact-details"><div class="section-head"><div><div class="eyebrow" style="color:#708346">Контакти</div><h1>Свържи се с нас</h1><p>Пиши ни за оферта или посети адреса на фирмата.</p></div></div><div class="contact-grid"><div class="contact-info"><h3>{{ settings.legal_name }}</h3><p>ЕИК: {{ settings.eik }}</p><p><b>Телефон за връзка:</b><br><a href="tel:+359893552372">+359 893 552 372 · Денис Георгиев</a></p><p><b>Адрес:</b><br>{{ settings.address }}</p><p><b>Район на работа:</b><br>{{ settings.city }}</p><div class="map-actions"><a class="contact" href="{{ directions }}" target="_blank" rel="noopener">Упътвания в Google Maps ↗</a><a class="btn" style="background:#20b96b;color:white" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a></div></div><div><iframe class="map" title="Карта с адреса на фирмата" src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div></div></section>
+  </main>
+  <footer class="footer">© {{ settings.company_name }} · {{ settings.city }} · Цените са ориентировъчни.</footer>
+</div>
+<a class="wa" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a>
+</body>
+</html>
