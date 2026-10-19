@@ -1,4 +1,4 @@
-<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ settings.company_name }} | Вътрешни ремонти</title><meta name="description" content="Качествени вътрешни ремонти в {{ settings.city }}. Разгледай услугите и ориентировъчните цени."><link rel="canonical" href="{{ canonical_url }}"><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body><div class="wrap"><header class="top"><a class="brand brand-logo" href="/" aria-label="Vionex — начало"><img src="{{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }}" width="96" height="96" alt="Vionex" fetchpriority="high"></a><div class="header-tools"><nav class="nav"><a href="#uslugi">Услуги и цени</a><a href="{{ url_for('contact_page') }}">Контакти</a></nav><form id="site-search-form" class="site-search" role="search" method="get" action="{{ url_for('index') }}#uslugi"><label class="sr-only" for="site-search">Търсене в услугите и категориите</label><input id="site-search" type="search" name="q" placeholder="Търси услуга…" autocomplete="off"><span class="search-icon" aria-hidden="true">⌕</span></form><a class="contact" href="{{ wa }}" target="_blank" rel="noopener">Пиши ни в WhatsApp ↗</a></div></header><main><section class="hero"><div><div class="eyebrow">Вътрешни ремонти · {{ settings.city }}</div><h1>Домът ти.<br>Направен както трябва.</h1><p>Качествени ремонти и довършителни дейности с ясни цени, коректно отношение и внимание към детайла.</p><div class="actions"><a class="btn btn-lime" href="#uslugi">Разгледай услугите ↓</a><a class="btn btn-outline" href="{{ wa }}" target="_blank" rel="noopener">Запитване в WhatsApp</a></div></div></section><section class="section" id="uslugi"><div class="section-head"><div><div class="eyebrow" style="color:#708346">Ценоразпис</div><h2>Услуги и ориентировъчни цени</h2><p>Цените са за труд. Точна оферта след оглед.</p></div></div><p id="search-status" class="search-status" aria-live="polite"></p>{% for category in categories %}<details class="category" id="category-{{ category.id }}"><summary class="category-toggle"><span class="category-name">{{ category.name }}</span></summary><div class="category-content"><div class="category-gallery{% if not category.images %} category-gallery-empty{% endif %}"{% if not category.images %} data-empty-gallery{% endif %}>{% if category.images %}{% for image in category.images %}<figure data-search="{{ image.alt or category.name }}"><img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.alt or category.name }}" loading="lazy"><figcaption>{{ image.alt }}</figcaption></figure>{% endfor %}{% else %}<p>В тази категория все още няма качени снимки.</p>{% endif %}</div><div class="cards">{% for service in category.services %}<article class="card" data-search="{{ service.name }} {{ service.description }}"><h4>{{ service.name }}</h4><p>{{ service.description }}</p><div class="price">{% if service.price is not none %}от {{ '%.2f'|format(service.price)|replace('.', ',') }} € <small>/ {{ service.unit }}</small>{% else %}По договаряне{% endif %}</div></article>{% endfor %}</div></div></details>{% endfor %}</section></main><footer class="footer">© {{ settings.company_name }} · {{ settings.city }} · Цените са ориентировъчни.</footer></div><a class="wa" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a><script>
+<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ settings.company_name }} | Вътрешни ремонти</title><meta name="description" content="Качествени вътрешни ремонти в {{ settings.city }}. Разгледай услугите и ориентировъчните цени."><link rel="canonical" href="{{ canonical_url }}"><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head><body><div class="wrap"><header class="top"><a class="brand brand-logo" href="/" aria-label="Vionex — начало"><img src="{{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }}" width="96" height="96" alt="Vionex" fetchpriority="high"></a><div class="header-tools"><nav class="nav"><a href="#uslugi">Услуги и цени</a><a href="{{ url_for('contact_page') }}">Контакти</a></nav><form id="site-search-form" class="site-search" role="search" method="get" action="{{ url_for('index') }}#uslugi"><label class="sr-only" for="site-search">Търсене в услугите и категориите</label><input id="site-search" type="search" name="q" placeholder="Търси услуга…" autocomplete="off"><span class="search-icon" aria-hidden="true">⌕</span></form><a class="contact" href="{{ wa }}" target="_blank" rel="noopener">Пиши ни в WhatsApp ↗</a></div></header><main><section class="hero"><div><div class="eyebrow">Вътрешни ремонти · {{ settings.city }}</div><h1>Домът ти.<br>Направен както трябва.</h1><p>Качествени ремонти и довършителни дейности с ясни цени, коректно отношение и внимание към детайла.</p><div class="actions"><a class="btn btn-lime" href="#uslugi">Разгледай услугите ↓</a><a class="btn btn-outline" href="{{ wa }}" target="_blank" rel="noopener">Запитване в WhatsApp</a></div></div></section><section class="section" id="uslugi"><div class="section-head"><div><div class="eyebrow" style="color:#708346">Ценоразпис</div><h2>Услуги и ориентировъчни цени</h2><p>Цените са за труд. Точна оферта след оглед.</p></div></div><p id="search-status" class="search-status" aria-live="polite"></p>{% for category in categories %}<section class="category" id="category-{{ category.id }}" data-category-name="{{ category.name }}"><h3 class="category-heading">{{ category.name }}</h3><div class="service-list">{% for service in category.services %}<details class="service-item" data-search="{{ service.name }} {{ service.description }}"><summary class="service-toggle"><span class="service-name">{{ service.name }}</span><span class="service-chevron" aria-hidden="true"></span></summary><div class="service-details"><p>{{ service.description }}</p><div class="price">{% if service.price is not none %}от {{ '%.2f'|format(service.price)|replace('.', ',') }} € <small>/ {{ service.unit }}</small>{% else %}По договаряне{% endif %}</div><div class="category-gallery{% if not category.images %} category-gallery-empty{% endif %}">{% if category.images %}{% for image in category.images %}<figure data-search="{{ image.alt or category.name }}"><img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.alt or category.name }}" loading="lazy"><figcaption>{{ image.alt }}</figcaption></figure>{% endfor %}{% else %}<p>В тази категория все още няма качени снимки.</p>{% endif %}</div></div></details>{% endfor %}</div></section>{% endfor %}</section></main><footer class="footer">© {{ settings.company_name }} · {{ settings.city }} · Цените са ориентировъчни.</footer></div><a class="wa" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a><script>
 (() => {
   const form = document.getElementById('site-search-form');
   const input = document.getElementById('site-search');
@@ -13,31 +13,31 @@
     let visibleImages = 0;
 
     for (const category of categories) {
-      const categoryName = category.querySelector('.category-name').textContent.toLocaleLowerCase('bg');
-      const categoryMatches = categoryName.includes(query);
-      let categoryHasMatch = categoryMatches;
-      for (const card of category.querySelectorAll('.card')) {
-        const matches = !query || categoryMatches || card.dataset.search.toLocaleLowerCase('bg').includes(query);
-        card.hidden = !matches;
-        if (matches) { visibleServices++; categoryHasMatch = true; }
+      const categoryName = (category.dataset.categoryName || '').toLocaleLowerCase('bg');
+      const categoryMatches = query.length > 0 && categoryName.includes(query);
+      let categoryHasMatch = false;
+
+      for (const service of category.querySelectorAll('.service-item')) {
+        const serviceText = service.dataset.search.toLocaleLowerCase('bg');
+        const serviceMatches = !query || categoryMatches || serviceText.includes(query);
+        service.hidden = !serviceMatches;
+        if (serviceMatches) {
+          visibleServices++;
+          categoryHasMatch = true;
+          if (query) service.open = true;
+        }
+        const figures = [...service.querySelectorAll('.category-gallery figure')];
+        let matchingImages = 0;
+        for (const figure of figures) {
+          const matches = !query || categoryMatches || figure.dataset.search.toLocaleLowerCase('bg').includes(query);
+          figure.hidden = !matches;
+          if (matches) matchingImages++;
+        }
+        const gallery = service.querySelector('.category-gallery');
+        if (gallery) gallery.hidden = figures.length > 0 && matchingImages === 0;
+        visibleImages += matchingImages;
       }
-      const figures = [...category.querySelectorAll('.category-gallery figure')];
-      let matchingImages = 0;
-      for (const figure of figures) {
-        const matches = !query || categoryMatches || figure.dataset.search.toLocaleLowerCase('bg').includes(query);
-        figure.hidden = !matches;
-        if (matches) matchingImages++;
-      }
-      const gallery = category.querySelector('.category-gallery');
-      const toggle = category.querySelector('.category-toggle');
-      if (gallery && toggle) {
-        const open = query ? categoryHasMatch : category.open;
-        if (figures.length && matchingImages === 0) gallery.hidden = true;
-        else gallery.hidden = false;
-        category.open = open;
-      }
-      visibleImages += matchingImages;
-      categoryHasMatch ||= matchingImages > 0;
+
       category.hidden = query.length > 0 && !categoryHasMatch;
       if (!category.hidden) visibleCategories++;
     }
@@ -47,8 +47,6 @@
     else status.textContent = `Намерени категории: ${visibleCategories}; услуги: ${visibleServices}; снимки: ${visibleImages}.`;
   };
 
-  for (const category of categories) {
-  }
   input.addEventListener('input', filter);
   const initialQuery = new URLSearchParams(window.location.search).get('q');
   if (initialQuery) { input.value = initialQuery; filter(); }
