@@ -11,9 +11,9 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Изображенията в `static/images/` се оптимизират до WebP с `python scripts/optimize_images.py` (изходните файлове се запазват). Настрой `SITE_URL` в `.env` с публичния адрес на сайта, за да сочат canonical адресът, `sitemap.xml` и `robots.txt` към правилния домейн; sitemap-ът включва публичната начална страница, а админ адресите са изключени от обхождане.
+Изображенията в `static/images/` се оптимизират до WebP с `python scripts/optimize_images.py` (изходните файлове се запазват). Стойността на `SITE_URL` в `.env` е `https://remontisofia.online`; canonical адресът, `sitemap.xml` и `robots.txt` използват този домейн; sitemap-ът включва публичната начална страница, а админ адресите са изключени от обхождане.
 
-Настройките се зареждат от `.env` в папката на проекта. Копирай `.env.example` като `.env`, после смени `ADMIN_PASSWORD` и `SECRET_KEY`. `.env` е локален файл и не се качва в Git.
+Настройките се зареждат от `.env` в папката на проекта. Копирай `.env.example` като `.env`, после смени `ADMIN_PASSWORD` и `SECRET_KEY`; коригирай `SITE_URL` само ако домейнът се промени. `.env` е локален файл и не се качва в Git.
 
 Отвори http://127.0.0.1:5000. Администрацията е на `/admin`; след вход избери „Към сайта“ или отвори `/admin/dashboard`.
 
@@ -25,7 +25,7 @@ python app.py
 
 1. В cPanel отвори **Setup Python App** и създай приложение с директория `vatreshni-remonti` (извън `public_html`), избран домейн и URI. Избери версия Python, съвместима със зависимостите.
 2. Задай startup file `passenger_wsgi.py` и entry point `application`. Той препраща към общия WSGI файл `wsgi.py`, който експортира Flask приложението.
-3. Създай `.env` ръчно в директорията на приложението на сървъра. Добави `SECRET_KEY`, силна `ADMIN_PASSWORD`, `SITE_URL` с публичния HTTPS адрес и при нужда `WHATSAPP_PHONE`. Този файл не се качва чрез Git deployment.
+3. Създай `.env` ръчно в директорията на приложението на сървъра. Добави `SECRET_KEY`, силна `ADMIN_PASSWORD`, `SITE_URL=https://remontisofia.online` и при нужда `WHATSAPP_PHONE`. Този файл не се качва чрез Git deployment.
 4. Инсталирай зависимостите от `requirements.txt` във виртуалната среда на Python приложението през Setup Python App.
 5. В cPanel **Git Version Control** клонирай хранилището отделно от App Directory и deploy-ни commit-а. `.cpanel.yml` копира кода, WSGI файловете, шаблоните, статичните файлове и скриптовете в `$HOME/vatreshni-remonti/`, после създава Passenger restart marker. Настрой друга стойност на `DEPLOYPATH` в `.cpanel.yml`, ако App Directory е различна.
 6. След deploy провери сайта и `/robots.txt`, `/sitemap.xml`, както и входа към `/admin`.

@@ -4,3 +4,6 @@
 
 .contact-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:18px}.contact-info{background:white;border:1px solid var(--line);padding:25px;border-radius:12px}.contact-info p{line-height:1.6;color:var(--muted)}.map{width:100%;height:290px;border:0;border-radius:12px}.map-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}@media(max-width:700px){.contact-grid{grid-template-columns:1fr}}
 .box{max-width:400px;margin:10vh auto;background:white;padding:30px;border-radius:12px;border:1px solid var(--line)}.box h1{font:800 28px Manrope}.box input{margin-bottom:12px}
+
+.brand-logo{display:block;width:140px;height:76px;overflow:hidden;flex:0 0 auto}.brand-logo img{display:block;width:140px;height:140px;max-width:none;object-fit:cover;object-position:center}
+@media(max-width:700px){.brand-logo{height:66px;width:130px}.brand-logo img{width:130px;height:130px}}
