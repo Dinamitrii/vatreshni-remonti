@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH="$HOME/vatreshni-remonti/"
+    - /bin/mkdir -p "$DEPLOYPATH"
+    - /bin/cp app.py passenger_wsgi.py requirements.txt "$DEPLOYPATH"
+    - /bin/cp -R templates static scripts "$DEPLOYPATH"
+    - /bin/mkdir -p "$DEPLOYPATH/tmp"
+    - /bin/touch "$DEPLOYPATH/tmp/restart.txt"

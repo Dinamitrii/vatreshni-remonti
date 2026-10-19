@@ -20,3 +20,14 @@ python app.py
 В администрацията можеш да смениш името, юридическото име, ЕИК, адреса за картата, района и WhatsApp телефона. Номерът се въвежда в международен формат само с цифри, например `359888123456`. Можеш да добавяш, преименуваш и изтриваш категории, както и да редактираш услугите, описанията и цените. Празна цена се показва като „По договаряне“.
 
 По подразбиране приложението слуша само на локалната машина; за публичен сървър използвай WSGI сървър и HTTPS.
+
+## Подготовка за SuperHosting.bg / cPanel
+
+1. В cPanel отвори **Setup Python App** и създай приложение с директория `vatreshni-remonti` (извън `public_html`), избран домейн и URI. Избери версия Python, съвместима със зависимостите.
+2. Задай startup file `passenger_wsgi.py` и entry point `application`. Файлът е в корена на проекта и експортира Flask приложението за Passenger.
+3. Създай `.env` ръчно в директорията на приложението на сървъра. Добави `SECRET_KEY`, силна `ADMIN_PASSWORD`, `SITE_URL` с публичния HTTPS адрес и при нужда `WHATSAPP_PHONE`. Този файл не се качва чрез Git deployment.
+4. Инсталирай зависимостите от `requirements.txt` във виртуалната среда на Python приложението през Setup Python App.
+5. В cPanel **Git Version Control** клонирай хранилището отделно от App Directory и deploy-ни commit-а. `.cpanel.yml` копира кода, шаблоните, статичните файлове и скриптовете в `$HOME/vatreshni-remonti/`, после създава Passenger restart marker. Настрой друга стойност на `DEPLOYPATH` в `.cpanel.yml`, ако App Directory е различна.
+6. След deploy провери сайта и `/robots.txt`, `/sitemap.xml`, както и входа към `/admin`.
+
+`.cpanel.yml` нарочно не копира `.env` или `repairs.sqlite3`: настройките и базата остават в App Directory при следващи deploy-и. Първото зареждане създава SQLite базата автоматично. При push директно към cPanel-managed Git repository cPanel може да стартира deployment автоматично; при repository, което се обновява от външен remote, използвай **Update from Remote** и после **Deploy HEAD Commit**.
