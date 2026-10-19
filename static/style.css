@@ -19,20 +19,10 @@
 .category>h3{margin:0 0 12px}.gallery-toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:0;border:0;background:transparent;color:var(--ink);text-align:left;font:700 19px Manrope,sans-serif;cursor:pointer}.gallery-toggle:hover .category-name,.gallery-toggle:focus-visible .category-name{color:var(--green);text-decoration:underline}.gallery-toggle-label{flex:0 0 auto;color:var(--green);font:600 13px 'DM Sans',sans-serif}
 @media(max-width:700px){.gallery-toggle{font-size:18px}.gallery-toggle-label{font-size:12px}}
 .category-gallery-empty{display:block;padding:14px 16px;background:#fff;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}.category-gallery-empty p{margin:0;font-size:14px}
-.category-content[hidden]{display:none!important}.category-toggle{display:block;list-style:none;width:100%;padding:5px 0;border:0;background:transparent;color:var(--ink);text-align:left;font:700 19px Manrope,sans-serif;cursor:pointer}.category-toggle::-webkit-details-marker{display:none}.category-toggle:hover,.category-toggle:focus-visible{color:var(--green);text-decoration:underline;text-underline-offset:4px}.category-content{padding:2px 0 0}.category-content .category-gallery{margin-top:14px}.category-content .cards{margin-top:14px}
-@media(max-width:700px){.category-toggle{padding:8px 0;font-size:18px}.category-content{padding:0}}
-
-/* Each individual service title opens its details and related category photos. */
-.category-heading{font:700 19px Manrope,sans-serif;margin:0 0 10px;color:var(--ink)}
-.service-list{display:grid;gap:10px}
-.service-item{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.service-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer;padding:15px 17px;font:700 16px Manrope,sans-serif;color:var(--ink)}
-.service-toggle::-webkit-details-marker{display:none}
-.service-toggle:hover,.service-toggle:focus-visible{color:var(--green);background:#f2f5ee}
-.service-chevron{width:9px;height:9px;flex:0 0 9px;border-right:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
-.service-item[open]>.service-toggle .service-chevron{transform:rotate(225deg) translate(-2px,-2px)}
-.service-details{padding:0 17px 16px;border-top:1px solid var(--line)}
-.service-details>p{color:var(--muted);line-height:1.55;margin:14px 0 0}
-.service-details .price{margin-top:10px}
-.service-details .category-gallery{margin-bottom:0}
-@media(max-width:700px){.category-heading{font-size:17px}.service-toggle{padding:14px;font-size:15px}.service-details{padding:0 12px 12px}.service-details .category-gallery{grid-template-columns:1fr 1fr}.service-details .category-gallery img{height:145px}}
+.category-heading{font:700 19px Manrope,sans-serif;margin:0 0 14px;color:var(--ink)}
+.category .cards{margin-top:10px}
+.service-gallery-toggle{display:block;padding:0;border:0;background:none;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.service-gallery-toggle:hover,.service-gallery-toggle:focus-visible{color:var(--green);text-decoration:underline;text-underline-offset:3px}
+.card .category-gallery{margin-top:16px}
+.card .category-gallery-empty{margin-bottom:0}
+@media(max-width:700px){.category-heading{font-size:17px}.service-gallery-toggle{min-height:36px}}
