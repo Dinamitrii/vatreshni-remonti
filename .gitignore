@@ -5,3 +5,5 @@ __pycache__/
 
 # Added by ggshield
 .cache_ggshield
+
+static/uploads/

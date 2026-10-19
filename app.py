@@ -3,8 +3,11 @@ import sqlite3
 from functools import wraps
 from pathlib import Path
 import secrets
+from uuid import uuid4
 from urllib.parse import quote
 from xml.sax.saxutils import escape
+
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
 
@@ -31,9 +34,13 @@ load_env_file(BASE_DIR / ".env")
 if not os.environ.get("SECRET_KEY"):
     os.environ["SECRET_KEY"] = secrets.token_urlsafe(48)
 DB_PATH = Path(os.environ.get("REPAIR_DB", BASE_DIR / "repairs.sqlite3"))
+CATEGORY_IMAGE_DIR = BASE_DIR / "static" / "uploads" / "categories"
+ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+MAX_IMAGE_EDGE = 2400
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", MAX_CONTENT_LENGTH=MAX_UPLOAD_BYTES + 1024 * 1024)
 
 
 def db():
@@ -58,6 +65,13 @@ def init_db():
             description TEXT NOT NULL DEFAULT '',
             price REAL,
             unit TEXT NOT NULL DEFAULT 'кв.м',
+            position INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS category_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+            filename TEXT NOT NULL UNIQUE,
+            alt TEXT NOT NULL DEFAULT '',
             position INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -109,17 +123,33 @@ def index():
     with db() as conn:
         settings = settings_dict(conn)
         categories = conn.execute("SELECT * FROM categories ORDER BY position,id").fetchall()
-        data = [{**dict(c), "services": [dict(s) for s in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (c["id"],))]} for c in categories]
+        data = [{**dict(c),
+                 "services": [dict(s) for s in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (c["id"],))],
+                 "images": [dict(i) for i in conn.execute("SELECT * FROM category_images WHERE category_id=? ORDER BY position,id", (c["id"],))]}
+                for c in categories]
     map_embed, directions = map_links(settings)
     return render_template("index.html", categories=data, settings=settings, wa=whatsapp(settings), map_embed=map_embed, directions=directions, canonical_url=f"{public_site_url()}/")
 
 
 @app.get("/sitemap.xml")
 def sitemap():
-    homepage = escape(f"{public_site_url()}/")
+    base_url = public_site_url()
+    homepage = escape(f"{base_url}/")
+    with db() as conn:
+        images = conn.execute("""
+            SELECT ci.filename, ci.alt, c.name AS category_name
+            FROM category_images ci JOIN categories c ON c.id=ci.category_id
+            ORDER BY c.position,c.id,ci.position,ci.id
+        """).fetchall()
+    image_entries = "\n".join(
+        "    <image:image><image:loc>" + escape(f"{base_url}{url_for('static', filename=image['filename'])}") + "</image:loc>" +
+        ("<image:title>" + escape(image["alt"] or image["category_name"]) + "</image:title>" if image["alt"] or image["category_name"] else "") +
+        "</image:image>"
+        for image in images
+    )
     xml = f'''<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>{homepage}</loc></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url><loc>{homepage}</loc>{image_entries}</url>
 </urlset>'''
     return Response(xml, mimetype="application/xml")
 
@@ -167,7 +197,10 @@ def admin_dashboard():
     with db() as conn:
         settings = settings_dict(conn)
         categories = conn.execute("SELECT * FROM categories ORDER BY position,id").fetchall()
-        data = [{**dict(c), "services": [dict(s) for s in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (c["id"],))]} for c in categories]
+        data = [{**dict(c),
+                 "services": [dict(s) for s in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (c["id"],))],
+                 "images": [dict(i) for i in conn.execute("SELECT * FROM category_images WHERE category_id=? ORDER BY position,id", (c["id"],))]}
+                for c in categories]
     return render_template("admin.html", settings=settings, categories=data)
 
 
@@ -199,6 +232,19 @@ def add_category():
     return redirect(url_for("admin_dashboard"))
 
 
+@app.post("/admin/category/<int:category_id>/position")
+@admin_required
+def set_category_position(category_id):
+    try:
+        position = max(0, int(request.form.get("position", "0")))
+        with db() as conn:
+            conn.execute("UPDATE categories SET position=? WHERE id=?", (position, category_id))
+        flash("Подредбата на категорията е запазена.")
+    except ValueError:
+        flash("Въведи валиден номер за подредба.")
+    return redirect(url_for("admin_dashboard"))
+
+
 @app.post("/admin/category/<int:category_id>/rename")
 @admin_required
 def rename_category(category_id):
@@ -215,7 +261,11 @@ def rename_category(category_id):
 @admin_required
 def delete_category(category_id):
     with db() as conn:
+        filenames = [row[0] for row in conn.execute("SELECT filename FROM category_images WHERE category_id=?", (category_id,))]
+    with db() as conn:
         conn.execute("DELETE FROM categories WHERE id=?", (category_id,))
+    for filename in filenames:
+        (BASE_DIR / "static" / filename).unlink(missing_ok=True)
     flash("Категорията и услугите в нея са изтрити.")
     return redirect(url_for("admin_dashboard"))
 
@@ -223,6 +273,118 @@ def delete_category(category_id):
 def parse_price(value):
     value = value.strip().replace(",", ".")
     return float(value) if value else None
+
+
+def save_optimized_image(file_storage):
+    if not file_storage or not file_storage.filename:
+        raise ValueError("Избери изображение за качване.")
+    raw = file_storage.stream.read(MAX_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise ValueError("Изображението трябва да е до 12 MB.")
+    try:
+        from io import BytesIO
+        with Image.open(BytesIO(raw)) as source:
+            if source.format not in ALLOWED_IMAGE_FORMATS:
+                raise ValueError("Поддържат се JPEG, PNG и WebP изображения.")
+            source.verify()
+        with Image.open(BytesIO(raw)) as source:
+            image = ImageOps.exif_transpose(source)
+            if image.width * image.height > 40_000_000:
+                raise ValueError("Изображението е прекалено голямо.")
+            image.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE), Image.Resampling.LANCZOS)
+            if image.mode not in ("RGB", "RGBA"):
+                image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+            CATEGORY_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+            filename = f"{uuid4().hex}.webp"
+            target = CATEGORY_IMAGE_DIR / filename
+            image.save(target, "WEBP", quality=82, method=6)
+            return f"uploads/categories/{filename}"
+    except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError) as exc:
+        raise ValueError("Файлът не е валидно изображение.") from exc
+
+
+@app.post("/admin/category/<int:category_id>/images")
+@admin_required
+def upload_category_image(category_id):
+    saved_path = None
+    try:
+        with db() as conn:
+            if not conn.execute("SELECT 1 FROM categories WHERE id=?", (category_id,)).fetchone():
+                abort(404)
+        saved_path = save_optimized_image(request.files.get("image"))
+        alt = request.form.get("alt", "").strip()[:250]
+        with db() as conn:
+            position = conn.execute("SELECT COALESCE(MAX(position),-1)+1 FROM category_images WHERE category_id=?", (category_id,)).fetchone()[0]
+            conn.execute("INSERT INTO category_images(category_id,filename,alt,position) VALUES (?,?,?,?)", (category_id, saved_path, alt, position))
+        flash("Снимката е качена и оптимизирана до WebP.")
+    except ValueError as exc:
+        if saved_path:
+            (BASE_DIR / "static" / saved_path).unlink(missing_ok=True)
+        flash(str(exc))
+    except sqlite3.Error:
+        if saved_path:
+            (BASE_DIR / "static" / saved_path).unlink(missing_ok=True)
+        flash("Снимката не можа да бъде запазена.")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.post("/admin/category-image/<int:image_id>/edit")
+@admin_required
+def edit_category_image(image_id):
+    try:
+        position = max(0, int(request.form.get("position", "0")))
+    except ValueError:
+        flash("Въведи валиден номер за подредба.")
+        return redirect(url_for("admin_dashboard"))
+    replacement = None
+    old_filename = None
+    with db() as conn:
+        current = conn.execute("SELECT filename FROM category_images WHERE id=?", (image_id,)).fetchone()
+    if not current:
+        abort(404)
+    old_filename = current["filename"]
+    try:
+        replacement_file = request.files.get("image")
+        if replacement_file and replacement_file.filename:
+            replacement = save_optimized_image(replacement_file)
+        with db() as conn:
+            filename = replacement or old_filename
+            conn.execute("UPDATE category_images SET alt=?, position=?, filename=? WHERE id=?", (request.form.get("alt", "").strip()[:250], position, filename, image_id))
+    except (ValueError, sqlite3.Error) as exc:
+        if replacement:
+            (BASE_DIR / "static" / replacement).unlink(missing_ok=True)
+        flash(str(exc) if isinstance(exc, ValueError) else "Промяната не можа да бъде запазена.")
+        return redirect(url_for("admin_dashboard"))
+    if replacement and old_filename:
+        (BASE_DIR / "static" / old_filename).unlink(missing_ok=True)
+    flash("Описанието и подредбата на снимката са запазени.")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.get("/admin/category-image/<int:image_id>/export")
+@admin_required
+def export_category_image(image_id):
+    with db() as conn:
+        image = conn.execute("SELECT filename FROM category_images WHERE id=?", (image_id,)).fetchone()
+    if not image:
+        abort(404)
+    path = BASE_DIR / "static" / image["filename"]
+    if not path.is_file():
+        abort(404)
+    return app.response_class(path.read_bytes(), mimetype="image/webp", headers={"Content-Disposition": f'attachment; filename="category-image-{image_id}.webp"'})
+
+
+@app.post("/admin/category-image/<int:image_id>/delete")
+@admin_required
+def delete_category_image(image_id):
+    with db() as conn:
+        image = conn.execute("SELECT filename FROM category_images WHERE id=?", (image_id,)).fetchone()
+        if image:
+            conn.execute("DELETE FROM category_images WHERE id=?", (image_id,))
+    if image:
+        (BASE_DIR / "static" / image["filename"]).unlink(missing_ok=True)
+        flash("Снимката е изтрита.")
+    return redirect(url_for("admin_dashboard"))
 
 
 @app.post("/admin/service")
