@@ -4,6 +4,7 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.env" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/static/uploads" />
     </content>
     <orderEntry type="jdk" jdkName="~/PycharmProjects/vatreshni-remonti/.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
