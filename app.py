@@ -214,6 +214,17 @@ def root_favicon():
     return send_from_directory(BASE_DIR / "favicon_io", "favicon.ico")
 
 
+@app.get("/ai-catalog.json")
+@app.get("/.well-known/ai-catalog.json")
+def ai_catalog():
+    return send_from_directory(
+        BASE_DIR / "static" / ".well-known",
+        "ai-catalog.json",
+        mimetype="application/ai-catalog+json",
+        max_age=3600,
+    )
+
+
 def settings_dict(conn):
     return {row["key"]: row["value"] for row in conn.execute("SELECT key,value FROM settings")}
 

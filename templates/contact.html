@@ -13,7 +13,7 @@
 <div class="wrap">
   <header class="top">
     <a class="brand brand-logo" href="{{ url_for('index') }}" aria-label="Vionex — начало">
-      <img src="{{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }}" width="96" height="96" alt="Vionex" fetchpriority="high">
+      <img src="{{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }}" width="96" height="96" alt="Vionex" srcset="{{ url_for('static', filename='images/brand/vionex-logo-160.webp') }} 160w, {{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }} 320w" sizes="(max-width: 700px) 88px, 96px" decoding="async" fetchpriority="high">
     </a>
     <div class="header-tools">
       <nav class="nav">
