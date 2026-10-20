@@ -9,7 +9,7 @@ from xml.sax.saxutils import escape
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, redirect, render_template, request, send_from_directory, session, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -123,6 +123,23 @@ init_db()
 def public_site_url():
     configured_url = os.environ.get("SITE_URL", "").strip().rstrip("/")
     return configured_url or request.url_root.rstrip("/")
+
+
+@app.get("/favicon_io/<path:filename>")
+def favicon_asset(filename):
+    allowed_files = {
+        "favicon.ico", "favicon-16x16.png", "favicon-32x32.png",
+        "apple-touch-icon.png", "android-chrome-192x192.png",
+        "android-chrome-512x512.png", "site.webmanifest",
+    }
+    if filename not in allowed_files:
+        abort(404)
+    return send_from_directory(BASE_DIR / "favicon_io", filename)
+
+
+@app.get("/favicon.ico")
+def root_favicon():
+    return send_from_directory(BASE_DIR / "favicon_io", "favicon.ico")
 
 
 def settings_dict(conn):
