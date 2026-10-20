@@ -70,12 +70,34 @@ def init_db():
         CREATE TABLE IF NOT EXISTS category_images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+            service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
             filename TEXT NOT NULL UNIQUE,
             alt TEXT NOT NULL DEFAULT '',
             position INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         """)
+        image_columns = {row["name"] for row in conn.execute("PRAGMA table_info(category_images)")}
+        if "service_id" not in image_columns:
+            conn.execute("ALTER TABLE category_images ADD COLUMN service_id INTEGER REFERENCES services(id) ON DELETE CASCADE")
+        legacy_images = conn.execute("""
+            SELECT id, category_id, alt FROM category_images
+            WHERE service_id IS NULL
+              AND EXISTS (SELECT 1 FROM services WHERE services.category_id=category_images.category_id)
+            ORDER BY category_id, position, id
+        """).fetchall()
+        for image in legacy_images:
+            services = conn.execute(
+                "SELECT id,name FROM services WHERE category_id=? ORDER BY position,id",
+                (image["category_id"],),
+            ).fetchall()
+            image_alt = image["alt"].casefold()
+            target = next((service for service in services if service["name"].casefold() in image_alt), services[0])
+            position = conn.execute(
+                "SELECT COALESCE(MAX(position),-1)+1 FROM category_images WHERE service_id=?",
+                (target["id"],),
+            ).fetchone()[0]
+            conn.execute("UPDATE category_images SET service_id=?,position=? WHERE id=?", (target["id"], position, image["id"]))
         if conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
             examples = [
                 ("Боядисване и шпакловка", [("Боядисване с латекс", "Подготовка и боядисване на стени и тавани.", 8.0, "кв.м"), ("Фина шпакловка", "Изравняване и подготовка за боядисване.", 12.0, "кв.м")]),
@@ -123,10 +145,16 @@ def index():
     with db() as conn:
         settings = settings_dict(conn)
         categories = conn.execute("SELECT * FROM categories ORDER BY position,id").fetchall()
-        data = [{**dict(c),
-                 "services": [dict(s) for s in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (c["id"],))],
-                 "images": [dict(i) for i in conn.execute("SELECT * FROM category_images WHERE category_id=? ORDER BY position,id", (c["id"],))]}
-                for c in categories]
+        data = []
+        for category in categories:
+            services = []
+            for service in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (category["id"],)):
+                service_data = dict(service)
+                service_data["images"] = [dict(image) for image in conn.execute(
+                    "SELECT * FROM category_images WHERE service_id=? ORDER BY position,id", (service["id"],)
+                )]
+                services.append(service_data)
+            data.append({**dict(category), "services": services})
     map_embed, directions = map_links(settings)
     return render_template("index.html", categories=data, settings=settings, wa=whatsapp(settings), map_embed=map_embed, directions=directions, canonical_url=f"{public_site_url()}/")
 
@@ -153,13 +181,14 @@ def sitemap():
     contacts_page_url = escape(f"{base_url}{url_for('contact_page')}")
     with db() as conn:
         images = conn.execute("""
-            SELECT ci.filename, ci.alt, c.name AS category_name
+            SELECT ci.filename, ci.alt, c.name AS category_name, s.name AS service_name
             FROM category_images ci JOIN categories c ON c.id=ci.category_id
-            ORDER BY c.position,c.id,ci.position,ci.id
+            LEFT JOIN services s ON s.id=ci.service_id
+            ORDER BY c.position,c.id,s.position,s.id,ci.position,ci.id
         """).fetchall()
     image_entries = "\n".join(
         "    <image:image><image:loc>" + escape(f"{base_url}{url_for('static', filename=image['filename'])}") + "</image:loc>" +
-        ("<image:title>" + escape(image["alt"] or image["category_name"]) + "</image:title>" if image["alt"] or image["category_name"] else "") +
+        ("<image:title>" + escape(image["alt"] or image["service_name"] or image["category_name"]) + "</image:title>" if image["alt"] or image["service_name"] or image["category_name"] else "") +
         "</image:image>"
         for image in images
     )
@@ -214,10 +243,16 @@ def admin_dashboard():
     with db() as conn:
         settings = settings_dict(conn)
         categories = conn.execute("SELECT * FROM categories ORDER BY position,id").fetchall()
-        data = [{**dict(c),
-                 "services": [dict(s) for s in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (c["id"],))],
-                 "images": [dict(i) for i in conn.execute("SELECT * FROM category_images WHERE category_id=? ORDER BY position,id", (c["id"],))]}
-                for c in categories]
+        data = []
+        for category in categories:
+            services = []
+            for service in conn.execute("SELECT * FROM services WHERE category_id=? ORDER BY position,id", (category["id"],)):
+                service_data = dict(service)
+                service_data["images"] = [dict(image) for image in conn.execute(
+                    "SELECT * FROM category_images WHERE service_id=? ORDER BY position,id", (service["id"],)
+                )]
+                services.append(service_data)
+            data.append({**dict(category), "services": services})
     return render_template("admin.html", settings=settings, categories=data)
 
 
@@ -320,19 +355,18 @@ def save_optimized_image(file_storage):
         raise ValueError("Файлът не е валидно изображение.") from exc
 
 
-@app.post("/admin/category/<int:category_id>/images")
-@admin_required
-def upload_category_image(category_id):
+def save_image_to_service(service_id):
     saved_path = None
     try:
         with db() as conn:
-            if not conn.execute("SELECT 1 FROM categories WHERE id=?", (category_id,)).fetchone():
+            service = conn.execute("SELECT id,category_id FROM services WHERE id=?", (service_id,)).fetchone()
+            if not service:
                 abort(404)
         saved_path = save_optimized_image(request.files.get("image"))
         alt = request.form.get("alt", "").strip()[:250]
         with db() as conn:
-            position = conn.execute("SELECT COALESCE(MAX(position),-1)+1 FROM category_images WHERE category_id=?", (category_id,)).fetchone()[0]
-            conn.execute("INSERT INTO category_images(category_id,filename,alt,position) VALUES (?,?,?,?)", (category_id, saved_path, alt, position))
+            position = conn.execute("SELECT COALESCE(MAX(position),-1)+1 FROM category_images WHERE service_id=?", (service_id,)).fetchone()[0]
+            conn.execute("INSERT INTO category_images(category_id,service_id,filename,alt,position) VALUES (?,?,?,?,?)", (service["category_id"], service_id, saved_path, alt, position))
         flash("Снимката е качена и оптимизирана до WebP.")
     except ValueError as exc:
         if saved_path:
@@ -343,6 +377,23 @@ def upload_category_image(category_id):
             (BASE_DIR / "static" / saved_path).unlink(missing_ok=True)
         flash("Снимката не можа да бъде запазена.")
     return redirect(url_for("admin_dashboard"))
+
+
+@app.post("/admin/service/<int:service_id>/images")
+@admin_required
+def upload_service_image(service_id):
+    return save_image_to_service(service_id)
+
+
+@app.post("/admin/category/<int:category_id>/images")
+@admin_required
+def upload_category_image(category_id):
+    with db() as conn:
+        service = conn.execute("SELECT id FROM services WHERE category_id=? ORDER BY position,id LIMIT 1", (category_id,)).fetchone()
+    if not service:
+        flash("Добави услуга към категорията, преди да качиш снимка.")
+        return redirect(url_for("admin_dashboard"))
+    return save_image_to_service(service["id"])
 
 
 @app.post("/admin/category-image/<int:image_id>/edit")
@@ -433,7 +484,10 @@ def edit_service(service_id):
 @admin_required
 def delete_service(service_id):
     with db() as conn:
+        filenames = [row[0] for row in conn.execute("SELECT filename FROM category_images WHERE service_id=?", (service_id,))]
         conn.execute("DELETE FROM services WHERE id=?", (service_id,))
+    for filename in filenames:
+        (BASE_DIR / "static" / filename).unlink(missing_ok=True)
     flash("Услугата е изтрита.")
     return redirect(url_for("admin_dashboard"))
 

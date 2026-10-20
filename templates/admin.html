@@ -32,7 +32,7 @@
   <section class="panel">
     <h2>Добави категория</h2>
     <form method="post" action="/admin/category" class="row"><input name="name" placeholder="Напр. Бояджийски услуги" required><button class="submit">Добави</button></form>
-    <p class="hint">Подреди категориите с номерата за позиция. Снимките и услугите се показват в реда на съответната категория.</p>
+    <p class="hint">Подреди категориите с номерата за позиция. Галерията и снимките се управляват отделно към всяка услуга.</p>
   </section>
 
   {% for category in categories %}
@@ -48,42 +48,6 @@
       <form method="post" action="/admin/category/{{ category.id }}/delete" onsubmit="return confirm('Да изтрия ли категорията, услугите и снимките в нея?')"><button class="danger">Изтрий категория</button></form>
     </div>
 
-    <section class="image-manager">
-      <h3>Снимки в „{{ category.name }}“</h3>
-      {% if category.images %}
-      <div class="admin-image-grid">
-        {% for image in category.images %}
-        <article class="admin-image-card">
-          <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.alt or category.name }}">
-          <form method="post" action="/admin/category-image/{{ image.id }}/edit" enctype="multipart/form-data">
-            <label for="image-alt-{{ image.id }}">Описание / alt текст</label>
-            <input id="image-alt-{{ image.id }}" name="alt" value="{{ image.alt }}" maxlength="250" placeholder="Кратко опиши снимката">
-            <label for="image-position-{{ image.id }}">Ред в категорията</label>
-            <input id="image-position-{{ image.id }}" type="number" name="position" min="0" value="{{ image.position }}">
-            <label for="image-file-{{ image.id }}">Замени файла (по избор)</label>
-            <input id="image-file-{{ image.id }}" type="file" name="image" accept="image/jpeg,image/png,image/webp">
-            <button class="submit">Запази промените</button>
-          </form>
-          <div class="image-actions">
-            <a class="small-action" href="/admin/category-image/{{ image.id }}/export">Изтегли WebP</a>
-            <form method="post" action="/admin/category-image/{{ image.id }}/delete" onsubmit="return confirm('Да изтрия ли снимката?')"><button class="danger">Изтрий снимката</button></form>
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-      {% else %}<p class="hint">Все още няма качени снимки.</p>{% endif %}
-
-      <form method="post" action="/admin/category/{{ category.id }}/images" enctype="multipart/form-data" class="upload-form">
-        <h4>Качи снимка</h4>
-        <div class="form-grid">
-          <div><label for="upload-{{ category.id }}">Файл (JPEG, PNG или WebP, до 12 MB)</label><input id="upload-{{ category.id }}" type="file" name="image" accept="image/jpeg,image/png,image/webp" required></div>
-          <div><label for="upload-alt-{{ category.id }}">Описание на снимката</label><input id="upload-alt-{{ category.id }}" name="alt" maxlength="250" placeholder="Напр. Завършен ремонт на баня"></div>
-        </div>
-        <button class="submit">Качи и оптимизирай</button>
-        <small class="hint">Снимката се преобразува автоматично в WebP и се намалява до максимум 2400 × 2400 пиксела.</small>
-      </form>
-    </section>
-
     <form method="post" action="/admin/service" class="panel service-form">
       <h3>Нова услуга</h3><input type="hidden" name="category_id" value="{{ category.id }}">
       <div class="form-grid">
@@ -94,16 +58,55 @@
       </div>
       <p><button class="submit">Добави услуга</button></p>
     </form>
+
     {% for service in category.services %}
-    <form method="post" action="/admin/service/{{ service.id }}/edit" class="item">
-      <div class="form-grid">
-        <div><label>Наименование</label><input name="name" value="{{ service.name }}" required></div>
-        <div><label>Цена в евро (празно = по договаряне)</label><input name="price" type="number" step="0.01" min="0" value="{{ service.price if service.price is not none else '' }}"></div>
-        <div><label>Мерна единица</label><input name="unit" value="{{ service.unit }}"></div>
-        <div><label>Описание</label><input name="description" value="{{ service.description }}"></div>
-      </div>
-      <p><button class="submit">Запази промените</button> <button class="danger" formaction="/admin/service/{{ service.id }}/delete" formmethod="post" onclick="return confirm('Да изтрия ли услугата?')">Изтрий</button></p>
-    </form>
+    <section class="panel service-admin">
+      <form method="post" action="/admin/service/{{ service.id }}/edit" class="item">
+        <div class="form-grid">
+          <div><label>Наименование</label><input name="name" value="{{ service.name }}" required></div>
+          <div><label>Цена в евро (празно = по договаряне)</label><input name="price" type="number" step="0.01" min="0" value="{{ service.price if service.price is not none else '' }}"></div>
+          <div><label>Мерна единица</label><input name="unit" value="{{ service.unit }}"></div>
+          <div><label>Описание</label><input name="description" value="{{ service.description }}"></div>
+        </div>
+        <p><button class="submit">Запази промените</button> <button class="danger" formaction="/admin/service/{{ service.id }}/delete" formmethod="post" onclick="return confirm('Да изтрия ли услугата и нейните снимки?')">Изтрий</button></p>
+      </form>
+
+      <section class="image-manager">
+        <h3>Галерия на „{{ service.name }}“</h3>
+        {% if service.images %}
+        <div class="admin-image-grid">
+          {% for image in service.images %}
+          <article class="admin-image-card">
+            <img src="{{ url_for('static', filename=image.filename) }}" alt="{{ image.alt or service.name }}">
+            <form method="post" action="/admin/category-image/{{ image.id }}/edit" enctype="multipart/form-data">
+              <label for="image-alt-{{ image.id }}">Описание / alt текст</label>
+              <input id="image-alt-{{ image.id }}" name="alt" value="{{ image.alt }}" maxlength="250" placeholder="Кратко опиши снимката">
+              <label for="image-position-{{ image.id }}">Ред в галерията</label>
+              <input id="image-position-{{ image.id }}" type="number" name="position" min="0" value="{{ image.position }}">
+              <label for="image-file-{{ image.id }}">Замени файла (по избор)</label>
+              <input id="image-file-{{ image.id }}" type="file" name="image" accept="image/jpeg,image/png,image/webp">
+              <button class="submit">Запази промените</button>
+            </form>
+            <div class="image-actions">
+              <a class="small-action" href="/admin/category-image/{{ image.id }}/export">Изтегли WebP</a>
+              <form method="post" action="/admin/category-image/{{ image.id }}/delete" onsubmit="return confirm('Да изтрия ли снимката?')"><button class="danger">Изтрий снимката</button></form>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}<p class="hint">Все още няма качени снимки за тази услуга.</p>{% endif %}
+
+        <form method="post" action="/admin/service/{{ service.id }}/images" enctype="multipart/form-data" class="upload-form">
+          <h4>Качи снимка за „{{ service.name }}“</h4>
+          <div class="form-grid">
+            <div><label for="upload-{{ service.id }}">Файл (JPEG, PNG или WebP, до 12 MB)</label><input id="upload-{{ service.id }}" type="file" name="image" accept="image/jpeg,image/png,image/webp" required></div>
+            <div><label for="upload-alt-{{ service.id }}">Описание на снимката</label><input id="upload-alt-{{ service.id }}" name="alt" maxlength="250" placeholder="Напр. Завършена фина шпакловка"></div>
+          </div>
+          <button class="submit">Качи и оптимизирай</button>
+          <small class="hint">Снимката се преобразува автоматично в WebP и се намалява до максимум 2400 × 2400 пиксела.</small>
+        </form>
+      </section>
+    </section>
     {% endfor %}
   </section>
   {% endfor %}
