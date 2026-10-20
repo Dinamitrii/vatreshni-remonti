@@ -32,7 +32,7 @@
   <main>
 <section class="section" id="contact-details"><div class="section-head"><div><div class="eyebrow" style="color:#596b2c">Контакти</div><h1>Свържи се с нас</h1><p>Пиши ни за оферта или посети адреса на фирмата.</p></div></div><div class="contact-grid"><div class="contact-info"><h3>{{ settings.legal_name }}</h3><p>ЕИК: {{ settings.eik }}</p><p><b>Телефон за връзка:</b><br><a href="tel:+359893552372">+359 893 552 372 · Денис Георгиев</a></p><p><b>Адрес:</b><br>{{ settings.address }}</p><p><b>Район на работа:</b><br>{{ settings.city }}</p><div class="map-actions"><a class="contact" href="{{ directions }}" target="_blank" rel="noopener">Упътвания в Google Maps ↗</a><a class="btn" style="background:#0f7a43;color:white" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a></div></div><div><iframe class="map" title="Карта с адреса на фирмата" src="{{ map_embed }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div></div></section>
   </main>
-  <footer class="footer">© {{ settings.company_name }} · {{ settings.city }} · Цените са ориентировъчни.</footer>
+  <footer class="footer">© {{ settings.company_name }} · {{ settings.city }} · Вестерос БГ ЕООД © 2026 г. · <a href="{{ url_for('admin_login') }}">Админ панел</a> · Цените са ориентировъчни.</footer>
 </div>
 <a class="wa" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a>
 </body>
