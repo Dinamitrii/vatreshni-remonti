@@ -7,3 +7,4 @@ __pycache__/
 .cache_ggshield
 
 static/uploads/
+repairs.sqlite3
