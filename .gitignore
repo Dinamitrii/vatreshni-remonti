@@ -8,3 +8,4 @@ __pycache__/
 
 static/uploads/
 repairs.sqlite3
+/repairs.sqlite3
