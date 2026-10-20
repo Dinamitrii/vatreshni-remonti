@@ -1,4 +1,5 @@
 import os
+import gzip
 import sqlite3
 import tempfile
 from functools import wraps
@@ -15,6 +16,66 @@ from responsive_images import generate as generate_responsive_image, install as 
 from flask import Flask, Response, abort, flash, redirect, render_template, request, send_from_directory, session, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
+
+
+class GzipCompression:
+    """Compress text responses, including Flask's development-server assets."""
+    COMPRESSIBLE = ("text/", "application/json", "application/javascript", "application/xml")
+
+    def __init__(self, application, minimum_size=500):
+        self.application = application
+        self.minimum_size = minimum_size
+
+    def __call__(self, environ, start_response):
+        captured = {}
+        writes = []
+
+        def capture(status, headers, exc_info=None):
+            captured["status"] = status
+            captured["headers"] = headers
+            return writes.append
+
+        iterable = self.application(environ, capture)
+        status = captured["status"]
+        headers = list(captured["headers"])
+        header_map = {key.lower(): value for key, value in headers}
+        content_type = header_map.get("content-type", "").lower()
+        compressible = any(content_type.startswith(prefix) for prefix in self.COMPRESSIBLE) or "+xml" in content_type
+        accepted = "gzip" in environ.get("HTTP_ACCEPT_ENCODING", "").lower()
+        should_compress = (accepted and compressible
+                           and status.split(" ", 1)[0] not in ("204", "304")
+                           and "content-encoding" not in header_map
+                           and "content-range" not in header_map
+                           and environ.get("REQUEST_METHOD") != "HEAD")
+        if not should_compress:
+            start_response(status, headers)
+            if not writes:
+                return iterable
+
+            def passthrough():
+                yield from writes
+                yield from iterable
+
+            return passthrough()
+
+        try:
+            body = b"".join((*writes, *iterable))
+        finally:
+            close = getattr(iterable, "close", None)
+            if close:
+                close()
+
+        if len(body) >= self.minimum_size:
+            body = gzip.compress(body, compresslevel=6, mtime=0)
+            headers = [(key, value) for key, value in headers if key.lower() != "content-length"]
+            headers.append(("Content-Encoding", "gzip"))
+            vary = header_map.get("vary", "")
+            if "accept-encoding" not in vary.lower():
+                headers.append(("Vary", f"{vary}, Accept-Encoding".strip(", ")))
+            headers.append(("Content-Length", str(len(body))))
+
+        start_response(status, headers)
+        return [body]
 
 
 def load_env_file(path):
@@ -42,6 +103,7 @@ ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 MAX_IMAGE_EDGE = 2400
 app = Flask(__name__)
+app.wsgi_app = GzipCompression(app.wsgi_app)
 app.secret_key = os.environ["SECRET_KEY"]
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", MAX_CONTENT_LENGTH=MAX_UPLOAD_BYTES + 1024 * 1024)
 install_responsive_images(app)

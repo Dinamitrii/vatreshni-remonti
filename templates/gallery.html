@@ -7,7 +7,7 @@
   <title>{{ service.name }} — Галерия | {{ settings.company_name }}</title>
   <meta name="description" content="Снимки от изпълнени дейности: {{ service.name }}.">
   <link rel="canonical" href="{{ canonical_url }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_performance_head.html" %}
 </head>
 <body>
   <div class="wrap">

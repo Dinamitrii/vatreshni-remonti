@@ -7,7 +7,7 @@
   <title>Контакти · {{ settings.company_name }}</title>
   <meta name="description" content="Телефон, адрес и връзка с {{ settings.company_name }} в {{ settings.city }}.">
   <link rel="canonical" href="{{ canonical_url }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% include "_performance_head.html" %}
 </head>
 <body>
 <div class="wrap">
