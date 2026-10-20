@@ -8,6 +8,7 @@ from urllib.parse import quote
 from xml.sax.saxutils import escape
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+from responsive_images import generate as generate_responsive_image, install as install_responsive_images, remove_responsive_variants
 
 from flask import Flask, Response, abort, flash, redirect, render_template, request, send_from_directory, session, url_for
 
@@ -41,6 +42,7 @@ MAX_IMAGE_EDGE = 2400
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", MAX_CONTENT_LENGTH=MAX_UPLOAD_BYTES + 1024 * 1024)
+install_responsive_images(app)
 
 
 def db():
@@ -48,6 +50,12 @@ def db():
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
+
+
+def remove_uploaded_image(filename):
+    path = BASE_DIR / "static" / filename
+    remove_responsive_variants(path)
+    path.unlink(missing_ok=True)
 
 
 def init_db():
@@ -334,7 +342,7 @@ def delete_category(category_id):
     with db() as conn:
         conn.execute("DELETE FROM categories WHERE id=?", (category_id,))
     for filename in filenames:
-        (BASE_DIR / "static" / filename).unlink(missing_ok=True)
+        remove_uploaded_image(filename)
     flash("Категорията и услугите в нея са изтрити.")
     return redirect(url_for("admin_dashboard"))
 
@@ -380,6 +388,7 @@ def save_image_to_service(service_id):
             if not service:
                 abort(404)
         saved_path = save_optimized_image(request.files.get("image"))
+        generate_responsive_image(BASE_DIR / "static" / saved_path)
         alt = request.form.get("alt", "").strip()[:250]
         with db() as conn:
             position = conn.execute("SELECT COALESCE(MAX(position),-1)+1 FROM category_images WHERE service_id=?", (service_id,)).fetchone()[0]
@@ -387,11 +396,11 @@ def save_image_to_service(service_id):
         flash("Снимката е качена и оптимизирана до WebP.")
     except ValueError as exc:
         if saved_path:
-            (BASE_DIR / "static" / saved_path).unlink(missing_ok=True)
+            remove_uploaded_image(saved_path)
         flash(str(exc))
     except sqlite3.Error:
         if saved_path:
-            (BASE_DIR / "static" / saved_path).unlink(missing_ok=True)
+            remove_uploaded_image(saved_path)
         flash("Снимката не можа да бъде запазена.")
     return redirect(url_for("admin_dashboard"))
 
@@ -432,16 +441,17 @@ def edit_category_image(image_id):
         replacement_file = request.files.get("image")
         if replacement_file and replacement_file.filename:
             replacement = save_optimized_image(replacement_file)
+            generate_responsive_image(BASE_DIR / "static" / replacement)
         with db() as conn:
             filename = replacement or old_filename
             conn.execute("UPDATE category_images SET alt=?, position=?, filename=? WHERE id=?", (request.form.get("alt", "").strip()[:250], position, filename, image_id))
     except (ValueError, sqlite3.Error) as exc:
         if replacement:
-            (BASE_DIR / "static" / replacement).unlink(missing_ok=True)
+            remove_uploaded_image(replacement)
         flash(str(exc) if isinstance(exc, ValueError) else "Промяната не можа да бъде запазена.")
         return redirect(url_for("admin_dashboard"))
     if replacement and old_filename:
-        (BASE_DIR / "static" / old_filename).unlink(missing_ok=True)
+        remove_uploaded_image(old_filename)
     flash("Описанието и подредбата на снимката са запазени.")
     return redirect(url_for("admin_dashboard"))
 
@@ -467,7 +477,7 @@ def delete_category_image(image_id):
         if image:
             conn.execute("DELETE FROM category_images WHERE id=?", (image_id,))
     if image:
-        (BASE_DIR / "static" / image["filename"]).unlink(missing_ok=True)
+        remove_uploaded_image(image["filename"])
         flash("Снимката е изтрита.")
     return redirect(url_for("admin_dashboard"))
 
@@ -504,7 +514,7 @@ def delete_service(service_id):
         filenames = [row[0] for row in conn.execute("SELECT filename FROM category_images WHERE service_id=?", (service_id,))]
         conn.execute("DELETE FROM services WHERE id=?", (service_id,))
     for filename in filenames:
-        (BASE_DIR / "static" / filename).unlink(missing_ok=True)
+        remove_uploaded_image(filename)
     flash("Услугата е изтрита.")
     return redirect(url_for("admin_dashboard"))
 
