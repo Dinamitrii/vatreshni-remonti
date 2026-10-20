@@ -1002,8 +1002,8 @@ label {
 
 /* Keep the full desktop header row centered and lower the logo slightly. */
 @media(min-width:901px){
-  .top{justify-content:center}
-  .brand-logo{transform:translateY(4px)}
+  .top{justify-content:center;height:116px}
+  .brand-logo{transform:translateY(10px)}
   .header-tools{margin:0;flex:0 1 auto;min-width:0;gap:16px}
   .header-tools .nav{gap:16px}
   .site-search{flex:0 1 210px;min-width:150px}
@@ -1018,3 +1018,5 @@ label {
   .brand-logo{transform:none}
   .header-tools{margin:0}
 }
+
+.brand-motto{text-align:left;align-self:center}
