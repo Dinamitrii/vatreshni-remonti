@@ -254,7 +254,12 @@ def index():
                     "SELECT * FROM category_images WHERE service_id=? ORDER BY position,id", (service["id"],)
                 )]
                 services.append(service_data)
-            data.append({**dict(category), "services": services})
+            category_data = dict(category)
+            category_data["images"] = [dict(image) for image in conn.execute(
+                "SELECT ci.*, s.name AS service_name FROM category_images ci LEFT JOIN services s ON s.id=ci.service_id WHERE ci.category_id=? ORDER BY s.position,s.id,ci.position,ci.id",
+                (category["id"],),
+            )]
+            data.append({**category_data, "services": services})
     map_embed, directions = map_links(settings)
     return render_template("index.html", categories=data, settings=settings, wa=whatsapp(settings), map_embed=map_embed, directions=directions, canonical_url=f"{public_site_url()}/")
 
@@ -326,6 +331,33 @@ def sitemap_image_url(filename, base_url):
     return f"{base_url}{url_for('static', filename=filename)}"
 
 
+@app.get("/galeria/kategoriq/<int:category_id>")
+def category_gallery(category_id):
+    with db() as conn:
+        settings = settings_dict(conn)
+        category = conn.execute("SELECT * FROM categories WHERE id=?", (category_id,)).fetchone()
+        if not category:
+            abort(404)
+        images = [dict(image) for image in conn.execute(
+            "SELECT ci.*, s.name AS service_name FROM category_images ci LEFT JOIN services s ON s.id=ci.service_id WHERE ci.category_id=? ORDER BY s.position,s.id,ci.position,ci.id",
+            (category_id,),
+        )]
+    if len(images) < 4:
+        abort(404)
+    gallery = {"name": category["name"], "category_name": category["name"],
+               "category_id": category_id, "description": ""}
+    return render_template(
+        "gallery.html",
+        service=gallery,
+        images=images,
+        settings=settings,
+        wa=whatsapp(settings),
+        map_embed="",
+        directions="",
+        canonical_url=f"{public_site_url()}{url_for('category_gallery', category_id=category_id)}",
+    )
+
+
 @app.get("/sitemap.xml")
 @app.get("/static/sitemap.xml")
 def sitemap():
@@ -349,7 +381,7 @@ def sitemap():
 
     with db() as conn:
         images = conn.execute("""
-            SELECT ci.filename, ci.alt, ci.service_id, c.name AS category_name,
+            SELECT ci.filename, ci.alt, ci.service_id, ci.category_id, c.name AS category_name,
                    s.name AS service_name, COUNT(*) OVER (PARTITION BY ci.service_id) AS service_image_count
             FROM category_images ci JOIN categories c ON c.id=ci.category_id
             LEFT JOIN services s ON s.id=ci.service_id
@@ -357,8 +389,10 @@ def sitemap():
         """).fetchall()
     homepage_images = []
     gallery_images = {}
+    category_gallery_images = {}
     for image in images:
-        if image["service_id"] is not None and image["service_image_count"] > 6:
+        category_gallery_images.setdefault(image["category_id"], []).append(image)
+        if image["service_id"] is not None and image["service_image_count"] >= 4:
             gallery_images.setdefault(image["service_id"], []).append(image)
         else:
             homepage_images.append(image)
@@ -367,6 +401,10 @@ def sitemap():
 
     add_url("/", priority="1.0", images=[sitemap_image(image) for image in homepage_images])
     add_url(url_for("contact_page"))
+    for category_id, category_images in category_gallery_images.items():
+        if len(category_images) >= 4:
+            add_url(url_for("category_gallery", category_id=category_id),
+                    images=[sitemap_image(image) for image in category_images])
     for service_id, service_images in gallery_images.items():
         add_url(url_for("service_gallery", service_id=service_id),
                 images=[sitemap_image(image) for image in service_images])
