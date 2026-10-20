@@ -26,3 +26,6 @@
 .card .category-gallery{margin-top:16px}
 .card .category-gallery-empty{margin-bottom:0}
 @media(max-width:700px){.category-heading{font-size:17px}.service-gallery-toggle{min-height:36px}}
+
+.service-gallery-toggle[href]{text-decoration:none}.service-gallery-toggle[href]:hover,.service-gallery-toggle[href]:focus-visible{text-decoration:underline}.gallery-page{padding:40px 0 56px}.gallery-page h1{margin:8px 0 12px}.gallery-back{display:inline-block;margin-bottom:28px;color:var(--green);font-weight:600}.gallery-intro{max-width:760px;color:var(--muted);margin:0 0 28px}.service-gallery-page-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:18px;margin-top:28px}.service-gallery-page-grid figure{margin:0;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}.service-gallery-page-grid img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.service-gallery-page-grid figcaption{padding:10px 13px;color:var(--muted);font-size:14px}
+@media(max-width:700px){.gallery-page{padding:24px 0 40px}.service-gallery-page-grid{grid-template-columns:1fr 1fr;gap:10px}.service-gallery-page-grid img{aspect-ratio:1/1}.service-gallery-page-grid figcaption{padding:8px;font-size:12px}}

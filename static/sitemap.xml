@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://remontisofia.online/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://remontisofia.online/static/uploads/categories/_responsive/8f999f2204274df2ac462c598cbf50eb.webp.4254495cf1e683f4.1200.webp</image:loc>
+      <image:title>Лед осветление с декоративен корниз и таван с монтирано вътрешно тяло на климатична сплит система</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://remontisofia.online/static/uploads/categories/_responsive/d7b9bab278c64f24adb9b558a6b1d791.webp.1456dfc71ad7e061.1200.webp</image:loc>
+      <image:title>Подготовка на гипсо-картона върху конструкция за финна шпакловка</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://remontisofia.online/static/uploads/categories/_responsive/5b9206b73a71433082c53a53abc3878b.webp.427ee791da944621.1200.webp</image:loc>
+      <image:title>Подготовка на гипсо-картона върху конструкция за финна шпакловка</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://remontisofia.online/kontakti</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://remontisofia.online/robots.txt</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>

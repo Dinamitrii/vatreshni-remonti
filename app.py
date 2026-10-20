@@ -1,10 +1,12 @@
 import os
 import sqlite3
+import tempfile
 from functools import wraps
 from pathlib import Path
 import secrets
 from uuid import uuid4
 from urllib.parse import quote
+from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -184,6 +186,36 @@ def index():
     return render_template("index.html", categories=data, settings=settings, wa=whatsapp(settings), map_embed=map_embed, directions=directions, canonical_url=f"{public_site_url()}/")
 
 
+@app.get("/galeria/<int:service_id>")
+def service_gallery(service_id):
+    with db() as conn:
+        settings = settings_dict(conn)
+        row = conn.execute("""
+            SELECT s.*, c.name AS category_name, c.id AS category_id
+            FROM services s JOIN categories c ON c.id=s.category_id
+            WHERE s.id=?
+        """, (service_id,)).fetchone()
+        if not row:
+            abort(404)
+        images = [dict(image) for image in conn.execute(
+            "SELECT * FROM category_images WHERE service_id=? ORDER BY position,id", (service_id,)
+        )]
+    if not images:
+        abort(404)
+    service = dict(row)
+    map_embed, directions = map_links(settings)
+    return render_template(
+        "gallery.html",
+        service=service,
+        images=images,
+        settings=settings,
+        wa=whatsapp(settings),
+        map_embed=map_embed,
+        directions=directions,
+        canonical_url=f"{public_site_url()}{url_for('service_gallery', service_id=service_id)}",
+    )
+
+
 @app.get("/kontakti")
 def contact_page():
     with db() as conn:
@@ -199,30 +231,96 @@ def contact_page():
     )
 
 
+def sitemap_image_url(filename, base_url):
+    """Prefer the largest generated responsive WebP, falling back to original."""
+    source = (app.static_folder and Path(app.static_folder) / filename)
+    if source is not None:
+        manifest = source.parent / "_responsive" / (source.name + ".json")
+        try:
+            import json
+            rows = json.loads(manifest.read_text(encoding="utf-8"))
+            valid = [row for row in rows if isinstance(row, dict)
+                     and isinstance(row.get("name"), str) and row["name"]
+                     and "/" not in row["name"] and "\\" not in row["name"]
+                     and isinstance(row.get("width"), int)
+                     and (manifest.parent / row["name"]).is_file()]
+            if valid:
+                best = max(valid, key=lambda row: row["width"])
+                directory = Path(filename).parent.as_posix()
+                return f"{base_url}/static/{directory}/_responsive/{quote(best['name'])}"
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+    return f"{base_url}{url_for('static', filename=filename)}"
+
+
 @app.get("/sitemap.xml")
+@app.get("/static/sitemap.xml")
 def sitemap():
-    base_url = public_site_url()
-    homepage = escape(f"{base_url}/")
-    contacts_page_url = escape(f"{base_url}{url_for('contact_page')}")
+    base_url = public_site_url().rstrip("/")
+    sitemap_ns = "http://www.sitemaps.org/schemas/sitemap/0.9"
+    image_ns = "http://www.google.com/schemas/sitemap-image/1.1"
+    ET.register_namespace("", sitemap_ns)
+    ET.register_namespace("image", image_ns)
+    root = ET.Element(f"{{{sitemap_ns}}}urlset")
+
+    def add_url(path, *, priority="0.7", images=()):
+        entry = ET.SubElement(root, f"{{{sitemap_ns}}}url")
+        ET.SubElement(entry, f"{{{sitemap_ns}}}loc").text = f"{base_url}{path}"
+        ET.SubElement(entry, f"{{{sitemap_ns}}}changefreq").text = "weekly"
+        ET.SubElement(entry, f"{{{sitemap_ns}}}priority").text = priority
+        for filename, title in images:
+            image = ET.SubElement(entry, f"{{{image_ns}}}image")
+            ET.SubElement(image, f"{{{image_ns}}}loc").text = sitemap_image_url(filename, base_url)
+            if title:
+                ET.SubElement(image, f"{{{image_ns}}}title").text = title
+
     with db() as conn:
         images = conn.execute("""
-            SELECT ci.filename, ci.alt, c.name AS category_name, s.name AS service_name
+            SELECT ci.filename, ci.alt, ci.service_id, c.name AS category_name,
+                   s.name AS service_name, COUNT(*) OVER (PARTITION BY ci.service_id) AS service_image_count
             FROM category_images ci JOIN categories c ON c.id=ci.category_id
             LEFT JOIN services s ON s.id=ci.service_id
             ORDER BY c.position,c.id,s.position,s.id,ci.position,ci.id
         """).fetchall()
-    image_entries = "\n".join(
-        "    <image:image><image:loc>" + escape(f"{base_url}{url_for('static', filename=image['filename'])}") + "</image:loc>" +
-        ("<image:title>" + escape(image["alt"] or image["service_name"] or image["category_name"]) + "</image:title>" if image["alt"] or image["service_name"] or image["category_name"] else "") +
-        "</image:image>"
-        for image in images
-    )
-    xml = f'''<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-<url><loc>{homepage}</loc>{image_entries}</url>
-  <url><loc>{contacts_page_url}</loc></url>
-</urlset>'''
-    return Response(xml, mimetype="application/xml")
+    homepage_images = []
+    gallery_images = {}
+    for image in images:
+        if image["service_id"] is not None and image["service_image_count"] > 6:
+            gallery_images.setdefault(image["service_id"], []).append(image)
+        else:
+            homepage_images.append(image)
+    def sitemap_image(image):
+        return (image["filename"], image["alt"] or image["service_name"] or image["category_name"])
+
+    add_url("/", priority="1.0", images=[sitemap_image(image) for image in homepage_images])
+    add_url(url_for("contact_page"))
+    for service_id, service_images in gallery_images.items():
+        add_url(url_for("service_gallery", service_id=service_id),
+                images=[sitemap_image(image) for image in service_images])
+    add_url("/robots.txt")
+
+    if hasattr(ET, "indent"):
+        ET.indent(root, space="  ")
+    sitemap_data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="wb", dir=app.static_folder,
+                                         prefix=".sitemap-", delete=False) as output:
+            temp_path = output.name
+            output.write(sitemap_data)
+        os.chmod(temp_path, 0o644)
+        os.replace(temp_path, Path(app.static_folder) / "sitemap.xml")
+        temp_path = None
+    except OSError:
+        app.logger.exception("Неуспешно записване на static/sitemap.xml")
+    finally:
+        if temp_path is not None:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                app.logger.exception("Неуспешно изтриване на временния sitemap файл")
+    return Response(sitemap_data, content_type="application/xml; charset=utf-8",
+                    headers={"Cache-Control": "no-store"})
 
 
 @app.get("/robots.txt")

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  {% include "_favicons.html" %}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ service.name }} — Галерия | {{ settings.company_name }}</title>
+  <meta name="description" content="Снимки от изпълнени дейности: {{ service.name }}.">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand brand-logo" href="{{ url_for('index') }}" aria-label="Vionex — начало"><img src="{{ url_for('static', filename='images/brand/vionex-logo-inverted.webp') }}" width="96" height="96" alt="Vionex" fetchpriority="high"></a>
+      <div class="header-tools">
+        <nav class="nav"><a href="{{ url_for('index') }}#category-{{ service.category_id }}">Услуги и цени</a><a href="{{ url_for('contact_page') }}">Контакти</a></nav>
+        <a class="contact" href="{{ wa }}" target="_blank" rel="noopener">Пиши ни в WhatsApp ↗</a>
+      </div>
+    </header>
+    <main class="gallery-page">
+      <a class="gallery-back" href="{{ url_for('index') }}#category-{{ service.category_id }}">← Назад към услугите</a>
+      <div class="eyebrow">{{ service.category_name }} · Галерия</div>
+      <h1>{{ service.name }}</h1>
+      {% if service.description %}<p class="gallery-intro">{{ service.description }}</p>{% endif %}
+      <div class="service-gallery-page-grid">
+        {% for image in images %}
+        <figure>
+          <img {{ responsive_image_attrs(url_for('static', filename=image.filename), 960, '(max-width: 700px) calc(100vw - 40px), (max-width: 1100px) 45vw, 520px') }} alt="{{ image.alt or service.name }}" loading="lazy" decoding="async">
+          {% if image.alt %}<figcaption>{{ image.alt }}</figcaption>{% endif %}
+        </figure>
+        {% endfor %}
+      </div>
+    </main>
+    <footer class="footer">© {{ settings.company_name }} · {{ settings.city }}</footer>
+  </div>
+  <a class="wa" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp ↗</a>
+</body>
+</html>
