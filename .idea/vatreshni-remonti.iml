@@ -6,13 +6,11 @@
       <excludeFolder url="file://$MODULE_DIR$/.idea/dataSources" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/static/uploads" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/dictionaries" />
     </content>
     <orderEntry type="jdk" jdkName="~/PycharmProjects/vatreshni-remonti/.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
-  <component name="PackageRequirementsSettings" />
-  <component name="PyDocumentationSettings" />
-  <component name="ReSTService" />
   <component name="TemplatesService">
     <option name="TEMPLATE_FOLDERS">
       <list>
@@ -20,5 +18,4 @@
       </list>
     </option>
   </component>
-  <component name="TestRunnerService" />
 </module>
