@@ -434,6 +434,11 @@ def sitemap():
                     headers={"Cache-Control": "no-store"})
 
 
+@app.get("/llms.txt")
+def llms_txt():
+    return send_from_directory(BASE_DIR, "llms.txt", mimetype="text/plain")
+
+
 @app.get("/robots.txt")
 def robots():
     sitemap_url = escape(f"{public_site_url()}/sitemap.xml")
