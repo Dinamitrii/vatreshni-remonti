@@ -1,11 +1,45 @@
-/.venv/
-.env
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Local SQLite database and transient journal files
+/repairs.sqlite3
+/repairs.sqlite3-shm
+/repairs.sqlite3-wal
+/instance/*.sqlite3
+/instance/*.db
+
+# IDE and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs, temporary files, and editor backups
+*.log
+*.tmp
+*.swp
+*.bak
+*~
 
 # Added by ggshield
 .cache_ggshield
-
-static/uploads/
-repairs.sqlite3
-/repairs.sqlite3
