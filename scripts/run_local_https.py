@@ -5,12 +5,16 @@ import os
 import shutil
 import socket
 import subprocess
+import sys
 from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from app import app
 
 
-BASE_DIR = Path(__file__).resolve().parents[1]
 CERT_DIR = BASE_DIR / ".local-https"
 CERT_FILE = CERT_DIR / "localhost.pem"
 KEY_FILE = CERT_DIR / "localhost-key.pem"
@@ -48,7 +52,7 @@ def local_names():
     return sorted(names)
 
 
-def ensure_certificate(openssl, addresses, names):
+def ensure_certificate(openssl, mkcert, addresses, names):
     CERT_DIR.mkdir(mode=0o700, exist_ok=True)
     san_entries = [*(f"IP:{address}" for address in addresses), *(f"DNS:{name}" for name in names)]
     san = ",".join(san_entries)
@@ -66,7 +70,27 @@ def ensure_certificate(openssl, addresses, names):
         if validity.returncode == 0 and existing_san.returncode == 0 and all(
             entry in existing_san.stdout for entry in san_entries
         ):
-            return
+            if not mkcert:
+                return
+            root_dir = subprocess.run([mkcert, "-CAROOT"], capture_output=True, text=True)
+            root_ca = Path(root_dir.stdout.strip()) / "rootCA.pem" if root_dir.returncode == 0 else None
+            if root_ca and root_ca.is_file():
+                trusted = subprocess.run(
+                    [openssl, "verify", "-CAfile", str(root_ca), str(CERT_FILE)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                if trusted.returncode == 0:
+                    return
+
+    if mkcert:
+        subprocess.run(
+            [mkcert, "-cert-file", str(CERT_FILE), "-key-file", str(KEY_FILE),
+             *(str(address) for address in addresses), *names],
+            check=True,
+        )
+        KEY_FILE.chmod(0o600)
+        return
 
     subprocess.run(
         [
@@ -85,9 +109,10 @@ def main():
     if not openssl:
         raise SystemExit("Не е намерен OpenSSL. Инсталирай го, за да създадеш локален сертификат.")
 
+    mkcert = shutil.which("mkcert")
     addresses = local_addresses()
     names = local_names()
-    ensure_certificate(openssl, addresses, names)
+    ensure_certificate(openssl, mkcert, addresses, names)
 
     port = int(os.environ.get("PORT", "5000"))
     print("Локалният HTTPS сървър е достъпен на:")
@@ -96,7 +121,11 @@ def main():
     for address in addresses:
         display_address = f"[{address}]" if address.version == 6 else str(address)
         print(f"  https://{display_address}:{port}")
-    print("Сертификатът е самоподписан; браузърът ще покаже предупреждение за доверие.")
+    if mkcert:
+        print("Използва се сертификат от mkcert. Ако още не си изпълнил `mkcert -install`, направи го и рестартирай Chrome.")
+    else:
+        print("Сертификатът е самоподписан; Chrome ще покаже ERR_CERT_AUTHORITY_INVALID.")
+        print("За доверен сертификат инсталирай mkcert, изпълни `mkcert -install`, после стартирай този скрипт отново.")
     print("За IP адреси от допълнителни мрежови интерфейси задай LOCAL_HTTPS_IPS=IP1,IP2 и стартирай отново.")
 
     app.run(host="0.0.0.0", port=port, debug=False, ssl_context=(str(CERT_FILE), str(KEY_FILE)))
